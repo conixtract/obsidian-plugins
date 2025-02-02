@@ -1,0 +1,9 @@
+{
+    "id": "auto-linker",
+    "name": "Auto Linker",
+    "version": "1.0.0",
+    "minAppVersion": "1.0.0",
+    "author": "Your Name",
+    "description": "Automatically updates the links section in Obsidian notes.",
+    "isDesktopOnly": false
+}
