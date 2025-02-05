@@ -106,8 +106,8 @@ class AutoLinkUpdater extends Plugin {
         while ((match = linkRegex.exec(contentWithoutYaml)) !== null) {
             let linkedNote = match[1].trim();
             let alias = match[3] ? match[3].trim() : linkedNote;
-            existingLinks.add(linkedNote);
-            existingLinks.add(alias);
+            existingLinks.add(linkedNote.toLowerCase());
+            existingLinks.add(alias.toLowerCase());
         }
 
         allFiles.forEach(noteFile => {
@@ -123,12 +123,12 @@ class AutoLinkUpdater extends Plugin {
             }
 
             noteAliases.forEach(alias => {
-                if (existingLinks.has(alias) || existingLinks.has(note) || !alias) return; // 🔹 Skip already linked mentions
+                if (!alias || existingLinks.has(alias.toLowerCase()) || existingLinks.has(note.toLowerCase())) return; // 🔹 Skip already linked mentions
 
                 let escapedAlias = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // Escape special characters
-                const regex = new RegExp(`(?<!\\[\\[)\\b${escapedAlias}\\b(?!\\]\\])`, "g");
+                const regex = new RegExp(`(?<!\\[\\[)\\b${escapedAlias}\\b(?!\\]\\])`, "gi");
                 let match;
-                while ((match = regex.exec(contentWithoutYaml)) !== null) {
+                while ((match = regex.exec(contentWithoutYaml.toLowerCase())) !== null) {
                     if (!unlinkedMentions.has(alias)) {
                         unlinkedMentions.set(alias, { note, index: match.index });
                     }
@@ -164,15 +164,17 @@ class AutoLinkUpdater extends Plugin {
             let note = noteFile.basename;
             let metadata = this.app.metadataCache.getCache(noteFile.path);
 
-            if (note === mention) {
+            if (note.toLowerCase() === mention.toLowerCase()) {
                 targetNote = note;
                 break; // Direct match found
             }
 
-            if (metadata?.frontmatter?.aliases?.includes(mention)) {
+            if (Array.isArray(metadata?.frontmatter?.aliases) &&
+                metadata.frontmatter.aliases.some(a => typeof a === "string" && a.toLowerCase() === mention.toLowerCase())) {
                 targetNote = note;
-                break; // Alias match found
+                break; // Stop checking once a match is found
             }
+
         }
 
         if (!targetNote) {
@@ -187,7 +189,7 @@ class AutoLinkUpdater extends Plugin {
 
         // 🔹 Replace the first occurrence of the mention **AFTER** the YAML
         let aliasPart = targetNote !== mention ? `|${mention}` : "";
-        const regex = new RegExp(`(?<!\\[\\[)\\b${mention}\\b(?!\\]\\])`);
+        const regex = new RegExp(`(?<!\\[\\[)\\b${mention}\\b(?!\\]\\])`, "i"); // Remove "g" to replace only the first match
         let updatedContentWithoutYaml = contentWithoutYaml.replace(regex, `[[${targetNote}${aliasPart}]]`);
 
         // 🔹 Reconstruct the full note (YAML + modified content)
